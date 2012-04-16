@@ -23,6 +23,7 @@ Sequencer DB Management
 import hashlib
 import logging
 import os
+import sys
 from ConfigParser import RawConfigParser
 from os import path
 
@@ -499,15 +500,26 @@ class SequencerSQLDB(object):
         _LOGGER.info("Adding rule: %r", rule)
         dependson =  None if len(rule.dependson) == 0 \
             else ",".join(rule.dependson)
-        self.execute("INSERT INTO sequencer VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                     (rule.ruleset,
-                      rule.name,
-                      ",".join(rule.types),
-                      rule.filter,
-                      rule.action,
-                      rule.depsfinder,
-                      dependson,
-                      rule.comments))
+            
+        # test if name or ruleset already exists
+        (rowcount, rows) = self.execute("SELECT * FROM sequencer " + \
+                                          "WHERE ruleset=? AND name=?", \
+                                        (rule.ruleset, rule.name))
+
+        if rowcount == 0:
+          self.execute("INSERT INTO sequencer VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                       (rule.ruleset,
+                        rule.name,
+                        ",".join(rule.types),
+                        rule.filter,
+                        rule.action,
+                        rule.depsfinder,
+                        dependson,
+                        rule.comments))
+        else:
+          sys.stderr.write("ERROR: Ruleset %s with name %s already exists.\n" \
+                              % (rule.ruleset, rule.name))
+          return 1      
 
     def remove_rules(self, ruleset, rule_names=None, nodeps=False):
         """
