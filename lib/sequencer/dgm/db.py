@@ -205,7 +205,7 @@ class SequencerFileDB(object):
           config.set(rule.name, 'comments', str(rule.comments))
           if commit:
               self._commit_all_changes([rule.ruleset])
-        except Exception, msg:
+        except Exception:
           raise DuplicateRuleError(rule.ruleset, rule.name)
           return 1
 
@@ -514,7 +514,8 @@ class SequencerSQLDB(object):
                         rule.depsfinder,
                         dependson,
                         rule.comments))
-        except DuplicateRuleError:
+        except Exception:
+          raise DuplicateRuleError(rule.ruleset, rule.name)
           return 1
 
     def remove_rules(self, ruleset, rule_names=None, nodeps=False):
