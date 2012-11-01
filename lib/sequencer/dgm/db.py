@@ -26,7 +26,7 @@ import os
 from ConfigParser import RawConfigParser
 from os import path
 
-from sequencer.commons import get_version, UnknownRuleSet, \
+from sequencer.commons import get_version, UnknownRuleSet, DuplicateRuleError, \
      SequencerError, replace_if_none, NONE_VALUE
 from sequencer.dgm.model import Rule
 
@@ -194,16 +194,20 @@ class SequencerFileDB(object):
         config = self.config_for_ruleset.setdefault(rule.ruleset,
                                                     RawConfigParser())
         _LOGGER.info("Adding rule: %s to %s", rule, str(config.sections()))
-        config.add_section(rule.name)
-        config.set(rule.name, 'types', ",".join(rule.types))
-        config.set(rule.name, 'filter', rule.filter)
-        config.set(rule.name, 'action', str(rule.action))
-        config.set(rule.name, 'depsfinder', str(rule.depsfinder))
-        config.set(rule.name, 'dependson',
-                   NONE_VALUE if len(rule.dependson) == 0 else ",".join(rule.dependson))
-        config.set(rule.name, 'comments', str(rule.comments))
-        if commit:
-            self._commit_all_changes([rule.ruleset])
+        try:
+          config.add_section(rule.name)
+          config.set(rule.name, 'types', ",".join(rule.types))
+          config.set(rule.name, 'filter', rule.filter)
+          config.set(rule.name, 'action', str(rule.action))
+          config.set(rule.name, 'depsfinder', str(rule.depsfinder))
+          config.set(rule.name, 'dependson',
+                     NONE_VALUE if len(rule.dependson) == 0 else ",".join(rule.dependson))
+          config.set(rule.name, 'comments', str(rule.comments))
+          if commit:
+              self._commit_all_changes([rule.ruleset])
+        except Exception:
+          raise DuplicateRuleError(rule.ruleset, rule.name)
+          return 1
 
     def remove_rules(self, ruleset, rule_names=None, nodeps=False, commit=True):
         """
@@ -499,15 +503,20 @@ class SequencerSQLDB(object):
         _LOGGER.info("Adding rule: %r", rule)
         dependson =  None if len(rule.dependson) == 0 \
             else ",".join(rule.dependson)
-        self.execute("INSERT INTO sequencer VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                     (rule.ruleset,
-                      rule.name,
-                      ",".join(rule.types),
-                      rule.filter,
-                      rule.action,
-                      rule.depsfinder,
-                      dependson,
-                      rule.comments))
+
+        try:
+          self.execute("INSERT INTO sequencer VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                       (rule.ruleset,
+                        rule.name,
+                        ",".join(rule.types),
+                        rule.filter,
+                        rule.action,
+                        rule.depsfinder,
+                        dependson,
+                        rule.comments))
+        except Exception:
+          raise DuplicateRuleError(rule.ruleset, rule.name)
+          return 1
 
     def remove_rules(self, ruleset, rule_names=None, nodeps=False):
         """

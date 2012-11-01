@@ -32,7 +32,7 @@ name := sequencer
 version := $(shell grep '^version=.*' ./VERSION|sed 's/^version=//g')
 lastcommit := $(shell git log --pretty=format:'%H %aN %aE %ci'  -1)
 pkg_dir := $(name)-$(version)
-tarall := $(pkg_dir).tar.gz
+tarall := $(pkg_dir).tar
 package_name := $(pkg_dir)-$(release)
 tmpdir := $(shell mktemp -d)
 
@@ -85,7 +85,7 @@ pdfman:
 	done
 
 tar: version man
-	tar --exclude-vcs --exclude '*~' --exclude '#*#' -C $(tmpdir) --owner=root --group=root -cvzf archives/$(tarall) $(pkg_dir)
+	tar --exclude-vcs --exclude '*~' --exclude '#*#' -C $(tmpdir) --owner=root --group=root -cvf archives/$(tarall) $(pkg_dir)
 	@echo "INFO: tar OK"
 
 test:
